@@ -1,0 +1,74 @@
+version: '3.5'
+
+services:
+  brew-view:
+    image: bgio/brew-view:2.4.7
+    networks:
+      - bg-network
+    volumes:
+      - ./config/:/config
+      - /etc/hosts:/etc/hosts
+    environment:
+      BG_CONFIGURATION_FILE: /config/brew-view-config.yml
+    depends_on:
+      - mongodb
+      - rabbitmq
+
+  bartender:
+    image: bgio/bartender:2.4.1
+    networks:
+      - bg-network
+    volumes:
+      - /etc/hosts:/etc/hosts
+      - ./localplugins:/plugins
+      - ./config/:/config
+    environment:
+      BG_CONFIGURATION_FILE: /config/bartender-config.yml
+    depends_on:
+      - mongodb
+      - rabbitmq
+      - brew-view
+
+  mongodb:
+    image: mongo:3.6
+    networks:
+      - bg-network
+    volumes:
+      - mongo-data:/data/db
+      - mongo-config:/data/configdb
+    restart: always
+
+  rabbitmq:
+    image: rabbitmq:management-alpine
+    networks:
+      - bg-network
+    environment:
+      - RABBITMQ_DEFAULT_USER=beer_garden
+      - RABBITMQ_DEFAULT_PASS=somepassword
+    ports:
+      - '5672:5672'
+    volumes:
+      - rabbitmq-home:/var/lib/rabbitmq
+
+  nginx:
+    image: nginx
+    networks:
+      - bg-network
+    ports:
+      - '80:80'
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - brew-view
+
+networks:
+  bg-network:
+    driver: bridge
+    name: bg-network
+
+volumes:
+  plugins:
+  plugin-logs:
+  mongo-data:
+  mongo-config:
+  rabbitmq-home:
